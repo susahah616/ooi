@@ -49,40 +49,39 @@ inline bool UnityWorldToScreen(void* camera, const Vec3& world, Vec2& screen, fl
             w2s_method = Il2CppGetMethodOffset("UnityEngine.dll", "UnityEngine", "Camera", "WorldToScreenPoint", 1);
         }
     }
-
     if (w2s_method) {
-        Vec3 footWorld = world;
-
-        // TURUNIN POSISI KE BAWAH KAKI
-        // Kalau masih terlalu atas, naikin angka ini jadi 1.2 / 1.5
-        // Kalau terlalu bawah, kecilin jadi 0.4 / 0.6
-        footWorld.y -= 0.8f;
-
-        UnityVector3 inWorld = { footWorld.x, footWorld.y, footWorld.z };
+        UnityVector3 inWorld = { world.x, world.y, world.z };
         UnityVector3 result = reinterpret_cast<UnityVector3(*)(void*, UnityVector3)>(w2s_method)(camera, inWorld);
         
+        // Z < 0 berarti objek ada di belakang kamera
         if (result.z < 0.01f) return false;
+        
+        // Unity Camera.WorldToScreenPoint mengembalikan koordinat dalam Unity Screen Pixels.
+        // Unity Screen.width/height = resolusi render game (bisa 720p/1080p, BUKAN resolusi device).
+        // ImGui memakai Point coords (io.DisplaySize) = device points.
+        // Konversi: screen_pt = result_px * (displayPt / unityScreenPx)
         
         int unityW = GetUnityScreenWidth();
         int unityH = GetUnityScreenHeight();
         
+        float espScale = g_ESPCfg.ScreenScale > 0.1f ? g_ESPCfg.ScreenScale : 1.0f;
+        
+        float scaleX, scaleY;
         if (unityW > 0 && unityH > 0) {
-            float scaleX = screenW / (float)unityW;
-            float scaleY = screenH / (float)unityH;
-
-            screen.x = (result.x * scaleX) + g_ESPCfg.ScreenOffsetX;
-            screen.y = (screenH - (result.y * scaleY)) + g_ESPCfg.ScreenOffsetY;
+            // Pakai rasio Unity screen → ImGui display (paling akurat)
+            scaleX = (float)unityW / (screenW * espScale);
+            scaleY = (float)unityH / (screenH * espScale);
         } else {
-            float cs = g_ContentScaleFactor;
-            if (cs <= 0.1f) cs = 1.0f;
-
-            screen.x = (result.x / cs) + g_ESPCfg.ScreenOffsetX;
-            screen.y = (screenH - (result.y / cs)) + g_ESPCfg.ScreenOffsetY;
+            // Fallback: pakai contentScaleFactor
+            float cs = g_ContentScaleFactor * espScale;
+            scaleX = scaleY = cs;
         }
-
+        
+        // Unity origin: bottom-left. ImGui origin: top-left.
+        screen.x = (result.x / scaleX) + g_ESPCfg.ScreenOffsetX;
+        screen.y = (screenH - (result.y / scaleY)) + g_ESPCfg.ScreenOffsetY;
         return true;
     }
-
     return false;
 }
 

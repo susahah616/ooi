@@ -14,15 +14,8 @@ inline void DrawMonsterESP(ImDrawList* draw, void* camera, float screenW, float 
     for (auto& e : g_Battle.monsters_render) {
         if (e.isDead || e.hp <= 0) continue;
 
-        Vec3 footPos = e.pos;
-footPos.y -= 0.8f;
-
-Vec3 footPos = renderPos;
-footPos.y -= 0.8f;
-
-Vec2 rootPosW2S;
-if(!UnityWorldToScreen(camera, footPos, rootPosW2S, screenW, screenH))
-    continue;
+        Vec2 rootPosW2S;
+        if(!UnityWorldToScreen(camera, e.pos, rootPosW2S, screenW, screenH)) continue;
         
         // --- 3D PERSPECTIVE HEIGHT ---
         Vec3 headPos3D = e.pos;
@@ -137,15 +130,8 @@ inline void DrawPlayerESP(ImDrawList* draw, void* camera, float screenW, float s
         renderPos = sp;
     }
     
-    Vec3 footPos = e.pos;
-footPos.y -= 0.8f;
-
-Vec3 footPos = renderPos;
-footPos.y -= 0.8f;
-
-Vec2 rootPosW2S;
-if(!UnityWorldToScreen(camera, footPos, rootPosW2S, screenW, screenH))
-    continue;
+    Vec2 rootPosW2S;
+        if(!UnityWorldToScreen(camera, renderPos, rootPosW2S, screenW, screenH)) continue;
         
         ImVec2 rootPosVec2(rootPosW2S.x, rootPosW2S.y);
         

@@ -187,7 +187,7 @@
         g_Battle.SwapBuffers();
         
         // DEBUG TEXT DI LAYAR
-        // DEBUG TEXT DI LAYAR DISABLED
+       // DEBUG TEXT DI LAYAR DISABLED
 char debugStr[1] = "";
 char extraStr[1] = "";
 char enemyStr[1] = "";
