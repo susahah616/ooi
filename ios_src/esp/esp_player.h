@@ -1,3 +1,12 @@
+#include "esp_minimap.h"
+
+void DrawMinimapIcon(ImDrawList* draw,
+                     int entityId,
+                     int hp,
+                     int hpMax,
+                     const Vec3& pos,
+                     int localCamp);
+
 inline void DrawMonsterESP(ImDrawList* draw, void* camera, float screenW, float screenH) {
     float CurrentFOVScale = 1.0f; 
 
