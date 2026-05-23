@@ -304,7 +304,9 @@ if(!UnityWorldToScreen(camera, footPos, rootPosW2S, screenW, screenH))
                     draw->AddRectFilled(boxStart, boxEnd, IM_COL32(0, 0, 0, 200), boxSize * 0.15f);
                     draw->AddRect(boxStart, boxEnd, IM_COL32(255, 255, 255, 100), boxSize * 0.15f, 0, 2.0f);
                     
-                    std::string strCoolDown = std::to_string(cooldown);
+                    std::string strCoolDown =
+    std::to_string(cd_ms) + "|" +
+    std::to_string(type);
                     auto textSize = ImGui::CalcTextSize(strCoolDown.c_str());
                     ImVec2 textPos = ImVec2(basePos.x - (textSize.x * fontSize / ImGui::GetFontSize()) / 2, 
                                             basePos.y - (textSize.y * fontSize / ImGui::GetFontSize()) / 2);
