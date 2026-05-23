@@ -289,7 +289,7 @@ if(!UnityWorldToScreen(camera, footPos, rootPosW2S, screenW, screenH))
                 ImVec2 boxStart = ImVec2(basePos.x - boxSize/2, basePos.y - boxSize/2);
                 ImVec2 boxEnd = ImVec2(basePos.x + boxSize/2, basePos.y + boxSize/2);
                 
-                int cooldown = 5;
+                int cooldown = (cd_ms > 0) ? ((cd_ms + 999) / 1000) : 0;
                 
                 ImU32 color;
                 if (type == 0) {
