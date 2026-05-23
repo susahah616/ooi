@@ -95,7 +95,7 @@ inline void ShowMenu()
     ImGui::SetNextWindowSize(menuSize, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(minSize, maxSize);
 
-    std::string strTittle = "CODE BREAKER" + tittle;
+    std::string strTittle = "@gigitoogood" + tittle;
     if (ImGui::Begin(strTittle.c_str(), &bShowMenu, ImGuiWindowFlags_NoCollapse)) {
         
         menuPos = ImGui::GetWindowPos();

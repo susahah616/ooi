@@ -534,6 +534,11 @@ struct BattleState {
             uint32_t cool_time = Read<uint32_t>(cdData + OFF_CDD_COOLTIME);
             uint32_t start_time = Read<uint32_t>(cdData + OFF_CDD_STARTTIME);
             uint32_t orig_max = Read<uint32_t>(cdData + OFF_CDD_ORIGMAX);
+            printf("CD key=%d cool=%u start=%u max=%u\n",
+       key,
+       cool_time,
+       start_time,
+       orig_max);
             uint32_t game_time = Read<uint32_t>(logicBmPtr + 0x19c);
             
             int max_ms = orig_max > 0 ? orig_max : cool_time;

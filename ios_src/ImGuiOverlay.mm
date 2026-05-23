@@ -60,16 +60,24 @@
 - (void)setupToggleButton {
     // Buat tombol native iOS agar 100% bisa diklik tanpa masalah hitTest
     self.toggleButton = [UIButton buttonWithType:UIButtonTypeCustom];
+
     self.toggleButton.frame = CGRectMake(20, self.bounds.size.height - 80, 50, 50);
-    self.toggleButton.backgroundColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:0.6];
+
+    self.toggleButton.backgroundColor = [UIColor clearColor];
     self.toggleButton.layer.cornerRadius = 25;
-    self.toggleButton.layer.borderWidth = 1.5;
-    self.toggleButton.layer.borderColor = [UIColor whiteColor].CGColor;
-    [self.toggleButton setTitle:@"CBZ" forState:UIControlStateNormal];
-    [self.toggleButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    self.toggleButton.titleLabel.font = [UIFont boldSystemFontOfSize:14];
-    
-    [self.toggleButton addTarget:self action:@selector(onToggleClicked) forControlEvents:UIControlEventTouchUpInside];
+    self.toggleButton.clipsToBounds = YES;
+
+    UIImage *toggleImage = [UIImage imageNamed:@"download (1).jpg"];
+    [self.toggleButton setImage:toggleImage forState:UIControlStateNormal];
+
+    self.toggleButton.imageView.contentMode = UIViewContentModeScaleAspectFill;
+    self.toggleButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentFill;
+    self.toggleButton.contentVerticalAlignment = UIControlContentVerticalAlignmentFill;
+
+    [self.toggleButton addTarget:self
+                          action:@selector(onToggleClicked)
+                forControlEvents:UIControlEventTouchUpInside];
+
     [self addSubview:self.toggleButton];
 }
 
