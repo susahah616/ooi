@@ -3,9 +3,9 @@
 #include <fstream>
 #include <string>
 
-inline void SaveConfig() {
+inline bool SaveConfig() {
     std::ofstream file("mlbb_esp_config.ini");
-    if (!file.is_open()) return;
+    if (!file.is_open()) return false;
     file << "AutoLoadSettings=" << AutoLoadSettings << "\n";
     file << "ESPLine=" << Feature.ESPLine << "\n";
     file << "ESPBox=" << Feature.ESPBox << "\n";
@@ -45,9 +45,9 @@ inline void SaveConfig() {
     file.close();
 }
 
-inline void LoadConfig() {
+inline bool LoadConfig() {
     std::ifstream file("mlbb_esp_config.ini");
-    if (!file.is_open()) return;
+    if (!file.is_open()) return false;
     std::string line;
     while (std::getline(file, line)) {
         size_t delim = line.find('=');

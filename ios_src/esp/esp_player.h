@@ -14,8 +14,12 @@ inline void DrawMonsterESP(ImDrawList* draw, void* camera, float screenW, float 
     for (auto& e : g_Battle.monsters_render) {
         if (e.isDead || e.hp <= 0) continue;
 
-        Vec2 rootPosW2S;
-        if(!UnityWorldToScreen(camera, e.pos, rootPosW2S, screenW, screenH)) continue;
+        Vec3 footPos = e.pos;
+footPos.y -= 0.85f;
+
+Vec2 rootPosW2S;
+if(!UnityWorldToScreen(camera, footPos, rootPosW2S, screenW, screenH))
+    continue;
         
         // --- 3D PERSPECTIVE HEIGHT ---
         Vec3 headPos3D = e.pos;
@@ -130,8 +134,12 @@ inline void DrawPlayerESP(ImDrawList* draw, void* camera, float screenW, float s
         renderPos = sp;
     }
     
-    Vec2 rootPosW2S;
-        if(!UnityWorldToScreen(camera, renderPos, rootPosW2S, screenW, screenH)) continue;
+    Vec3 footPos = e.pos;
+footPos.y -= 0.85f;
+
+Vec2 rootPosW2S;
+if(!UnityWorldToScreen(camera, footPos, rootPosW2S, screenW, screenH))
+    continue;
         
         ImVec2 rootPosVec2(rootPosW2S.x, rootPosW2S.y);
         
@@ -281,7 +289,7 @@ inline void DrawPlayerESP(ImDrawList* draw, void* camera, float screenW, float s
                 ImVec2 boxStart = ImVec2(basePos.x - boxSize/2, basePos.y - boxSize/2);
                 ImVec2 boxEnd = ImVec2(basePos.x + boxSize/2, basePos.y + boxSize/2);
                 
-                int cooldown = (cd_ms > 0) ? ((cd_ms + 999) / 1000) : 0;
+                int cooldown = 5;
                 
                 ImU32 color;
                 if (type == 0) {

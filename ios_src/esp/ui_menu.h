@@ -241,25 +241,26 @@ inline void ShowMenu()
             ImGui::Spacing();
             
             if (ImGui::Button("Save Settings", ImVec2(ImGui::GetContentRegionAvail().x, 40))) {
-                SaveConfig();
-                toastsaveload = "Settings Saved!";
-            }
-            ImGui::Spacing();
-            if (ImGui::Button("Load Settings", ImVec2(ImGui::GetContentRegionAvail().x, 40))) {
-                LoadConfig();
-                toastsaveload = "Settings Loaded!";
-            }
-            
-            if (!toastsaveload.empty()) {
-                ImGui::Spacing();
-                ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f), "%s", toastsaveload.c_str());
-            }
+    toastsaveload = SaveConfig() ? "Settings Saved!" : "Save Failed!";
+}
 
-            ImGui::EndGroupPanel();
-            ImGui::EndChild();
-        }
+ImGui::Spacing();
 
-        ImGui::EndChild();
-    }
-    ImGui::End();
+if (ImGui::Button("Load Settings", ImVec2(ImGui::GetContentRegionAvail().x, 40))) {
+    toastsaveload = LoadConfig() ? "Settings Loaded!" : "Load Failed!";
+}
+
+if (!toastsaveload.empty()) {
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f), "%s", toastsaveload.c_str());
+}
+
+ImGui::EndGroupPanel();
+ImGui::EndChild();
+}
+
+ImGui::EndChild();
+}
+
+ImGui::End();
 }
