@@ -65,7 +65,7 @@
     self.toggleButton.layer.cornerRadius = 25;
     self.toggleButton.layer.borderWidth = 1.5;
     self.toggleButton.layer.borderColor = [UIColor whiteColor].CGColor;
-    [self.toggleButton setTitle:@"gigi" forState:UIControlStateNormal];
+    [self.toggleButton setTitle:@"CBZ" forState:UIControlStateNormal];
     [self.toggleButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     self.toggleButton.titleLabel.font = [UIFont boldSystemFontOfSize:14];
     
