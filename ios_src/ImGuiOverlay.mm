@@ -187,15 +187,15 @@
         g_Battle.SwapBuffers();
         
         // DEBUG TEXT DI LAYAR
-        // DEBUG TEXT DISABLED
+        // DEBUG TEXT DI LAYAR DISABLED
 char debugStr[1] = "";
 char extraStr[1] = "";
 char enemyStr[1] = "";
-        
-        // DEBUG OVERLAY DISABLED
+
 // std::string finalDebugStr = std::string(debugStr) + extraStr + enemyStr;
 // ImGui::GetBackgroundDrawList()->AddText(ImVec2(50, 50), IM_COL32(0, 255, 0, 255), finalDebugStr.c_str());
-        ImDrawList* bgDraw = ImGui::GetBackgroundDrawList();
+
+ImDrawList* bgDraw = ImGui::GetBackgroundDrawList();
         
         // --- MINIMAP BORDER (snake glow) — aktif SELALU saat MinimapESP=true, tidak perlu dalam match ---
         DrawMinimapBorder(bgDraw);
