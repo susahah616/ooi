@@ -521,35 +521,42 @@ struct BattleState {
                                 std::vector<CdEntry> cds;
                                 
                                 if (entries > 0x7000000000ULL && count > 0 && count <= 50) {
-                                    for (int k=0; k<count && k<30; k++) {
-                                        uintptr_t entryBase = entries + 0x20 + k * 0x18;
-                                        int32_t hash = ReadInt32(entryBase + 0x00);
-                                        if (hash == -1) continue;
-                                        
-                                        int32_t key = ReadInt32(entryBase + 0x08);
-                                        if (key <= 0) continue;
-                                        
-                                        uintptr_t cdData = ReadPtr(entryBase + 0x10);
-                                        if (cdData > 0x7000000000ULL) {
-                                            uint32_t cool_time = Read<uint32_t>(cdData + OFF_CDD_COOLTIME);
-                                            uint32_t start_time = Read<uint32_t>(cdData + OFF_CDD_STARTTIME);
-                                            uint32_t orig_max = Read<uint32_t>(cdData + OFF_CDD_ORIGMAX);
-                                            
-                                            // Read game frame time from LogicBattleManager (0x19c)
-                                            uint32_t game_time = Read<uint32_t>(logicBmPtr + 0x19c);
-                                            
-                                            int max_ms = orig_max > 0 ? orig_max : cool_time;
-                                            int remain_ms = 0;
-                                            if (start_time > 0 && cool_time > 0) {
-                                                uint32_t end_time = start_time + cool_time;
-                                                if (game_time < end_time) {
-                                                    remain_ms = end_time - game_time;
-                                                }
-                                            }
-                                            cds.push_back({key, remain_ms, max_ms});
-                                        }
-                                    }
-                                }
+    for (int k=0; k<count && k<30; k++) {
+        uintptr_t entryBase = entries + 0x20 + k * 0x18;
+        int32_t hash = ReadInt32(entryBase + 0x00);
+        if (hash == -1) continue;
+        
+        int32_t key = ReadInt32(entryBase + 0x08);
+        if (key <= 0) continue;
+        
+        uintptr_t cdData = ReadPtr(entryBase + 0x10);
+        if (cdData > 0x7000000000ULL) {
+            uint32_t cool_time = Read<uint32_t>(cdData + OFF_CDD_COOLTIME);
+            uint32_t start_time = Read<uint32_t>(cdData + OFF_CDD_STARTTIME);
+            uint32_t orig_max = Read<uint32_t>(cdData + OFF_CDD_ORIGMAX);
+            uint32_t game_time = Read<uint32_t>(logicBmPtr + 0x19c);
+            
+            int max_ms = orig_max > 0 ? orig_max : cool_time;
+            int remain_ms = 0;
+
+            if (cool_time > 0) {
+                if (start_time > 0) {
+                    uint32_t end_time = start_time + cool_time;
+
+                    if (game_time > 0 && game_time < end_time) {
+                        remain_ms = end_time - game_time;
+                    } else {
+                        remain_ms = cool_time;
+                    }
+                } else {
+                    remain_ms = cool_time;
+                }
+            }
+
+            cds.push_back({key, remain_ms, max_ms});
+        }
+    }
+}
                                 
                                 // Map to Hero Skills
                                 // Hero skills follow: heroId * 100 + slot (e.g. 1600=S1, 1610=S2)
