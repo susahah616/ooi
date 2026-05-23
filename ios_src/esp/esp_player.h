@@ -1,25 +1,12 @@
-#pragma once
-#include "imgui.h"
-#include "config.h"
-#include "game_math.h"
-#include "esp_core.h"
-#include "esp_minimap.h"
-#include <unordered_map>
-#include <cmath>
-#include <string>
-
 inline void DrawMonsterESP(ImDrawList* draw, void* camera, float screenW, float screenH) {
     float CurrentFOVScale = 1.0f; 
 
     for (auto& e : g_Battle.monsters_render) {
         if (e.isDead || e.hp <= 0) continue;
 
-        Vec3 footPos = e.pos;
-footPos.y -= 0.85f;
-
-Vec2 rootPosW2S;
-if(!UnityWorldToScreen(camera, footPos, rootPosW2S, screenW, screenH))
-    continue;
+        Vec2 rootPosW2S;
+        if (!UnityWorldToScreen(camera, e.pos, rootPosW2S, screenW, screenH))
+            continue;
         
         // --- 3D PERSPECTIVE HEIGHT ---
         Vec3 headPos3D = e.pos;
@@ -133,25 +120,23 @@ inline void DrawPlayerESP(ImDrawList* draw, void* camera, float screenW, float s
         }
         renderPos = sp;
     }
-    
-    Vec3 footPos = e.pos;
-footPos.y -= 0.85f;
 
-Vec2 rootPosW2S;
-if(!UnityWorldToScreen(camera, footPos, rootPosW2S, screenW, screenH))
-    continue;
-        
+        Vec2 rootPosW2S;
+        if (!UnityWorldToScreen(camera, renderPos, rootPosW2S, screenW, screenH))
+            continue;
+
         ImVec2 rootPosVec2(rootPosW2S.x, rootPosW2S.y);
-        
+
         // --- 3D PERSPECTIVE HEIGHT ---
         Vec3 headPos3D = renderPos;
         headPos3D.y += 1.4f;
+
         Vec2 headPosW2S;
         ImVec2 HeadPosVec2;
-        if(UnityWorldToScreen(camera, headPos3D, headPosW2S, screenW, screenH)) {
+
+        if (UnityWorldToScreen(camera, headPos3D, headPosW2S, screenW, screenH)) {
             HeadPosVec2 = ImVec2(headPosW2S.x, headPosW2S.y);
         } else {
-            // Fallback
             float dynamicOffset = GetDynamicOffset(screenH, CurrentFOVScale);
             HeadPosVec2 = ImVec2(rootPosVec2.x, rootPosVec2.y - dynamicOffset);
         }
@@ -304,9 +289,7 @@ if(!UnityWorldToScreen(camera, footPos, rootPosW2S, screenW, screenH))
                     draw->AddRectFilled(boxStart, boxEnd, IM_COL32(0, 0, 0, 200), boxSize * 0.15f);
                     draw->AddRect(boxStart, boxEnd, IM_COL32(255, 255, 255, 100), boxSize * 0.15f, 0, 2.0f);
                     
-                    std::string strCoolDown =
-    std::to_string(cd_ms) + "|" +
-    std::to_string(type);
+                    std::string strCoolDown = std::to_string(cooldown);
                     auto textSize = ImGui::CalcTextSize(strCoolDown.c_str());
                     ImVec2 textPos = ImVec2(basePos.x - (textSize.x * fontSize / ImGui::GetFontSize()) / 2, 
                                             basePos.y - (textSize.y * fontSize / ImGui::GetFontSize()) / 2);

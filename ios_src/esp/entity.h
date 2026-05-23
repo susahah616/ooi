@@ -1,318 +1,652 @@
-inline void DrawMonsterESP(ImDrawList* draw, void* camera, float screenW, float screenH) {
-    float CurrentFOVScale = 1.0f; 
+#pragma once
+#include <vector>
+#include <string>
+#include <mutex>
+#include "../Il2CppResolver.h"
+#include "../il2cpp_types.h"
+#include "../memory_internal.h"
+#include "offsets.h"
+#include "game_math.h"
 
-    for (auto& e : g_Battle.monsters_render) {
-        if (e.isDead || e.hp <= 0) continue;
+// ============================================================
+//  ENTITY DATA STRUCTURES
+//  Mewakili data ShowPlayer / ShowEntity yang dibaca dari memori
+// ============================================================
 
-        Vec2 rootPosW2S;
-        if (!UnityWorldToScreen(camera, e.pos, rootPosW2S, screenW, screenH))
-            continue;
-        
-        // --- 3D PERSPECTIVE HEIGHT ---
-        Vec3 headPos3D = e.pos;
-        headPos3D.y += 1.4f;
-        Vec2 headPosW2S;
-        ImVec2 headPosVec2;
-        if(UnityWorldToScreen(camera, headPos3D, headPosW2S, screenW, screenH)) {
-            headPosVec2 = ImVec2(headPosW2S.x, headPosW2S.y);
-        } else {
-            headPosVec2 = ImVec2(rootPosW2S.x, rootPosW2S.y - 30.0f);
-        }
-        
-        ImVec2 rootPosVec2(rootPosW2S.x, rootPosW2S.y);
-        
-        // Hitung box dimensions dulu agar baseY bisa anchor ke bawah box
-        float boxHeight = fabs(headPosVec2.y - rootPosVec2.y) * 1.15f;
-        float boxWidth  = boxHeight * 0.8f;
-        ImVec2 vStart   = {headPosVec2.x - boxWidth/2, headPosVec2.y};
-        ImVec2 vEnd     = {vStart.x + boxWidth, vStart.y + boxHeight};
-        
-        // baseY: tepat di bawah box
-        float baseY = vEnd.y + 2.0f;
+enum class EntityType {
+    Unknown = 0,
+    Hero,
+    Monster,
+    Tower,
+    Soldier,
+    Boss
+};
 
-        // ================== MONSTER BOX ==================
-        if (g_ESPCfg.ESPMBox) {
-            draw->AddRectFilled(vStart, vEnd, IM_COL32(0, 0, 0, 40), 2);
-            draw->AddRect(vStart, vEnd, IM_COL32(160, 32, 240, 220), 2, 0, 2.0f);
-        }
-        
-        // ================== MONSTER ROUND / ICON ==================
-        if (g_ESPCfg.ESPMRound) {
-            float circleRadius = 5.0f;
-            draw->AddCircleFilled(ImVec2(rootPosVec2.x, headPosVec2.y), circleRadius, IM_COL32(160, 32, 240, 200));
-            draw->AddCircle(ImVec2(rootPosVec2.x, headPosVec2.y), circleRadius, IM_COL32(255, 255, 255, 200), 0, 1.5f);
-        }
-        
-        // ================== MONSTER NAME ==================
-        if (g_ESPCfg.ESPMName && e.name.length() > 0) {
-            float fontSize = 13.0f;
-            auto textSize = ImGui::CalcTextSize(e.name.c_str());
-            float scaledTextWidth = (textSize.x * fontSize) / ImGui::GetFontSize();
-            ImVec2 textPos = {rootPosVec2.x - (scaledTextWidth / 2), baseY};
-            draw->AddText(NULL, fontSize, ImVec2(textPos.x+1, textPos.y+1), IM_COL32(0,0,0,240), e.name.c_str());
-            draw->AddText(NULL, fontSize, textPos, IM_COL32(255, 255, 255, 255), e.name.c_str());
-            baseY += (textSize.y * fontSize / ImGui::GetFontSize()) + 2.0f;
-        }
+struct EntityData {
+    uintptr_t ptr       = 0;    // Pointer ke ShowEntity/ShowPlayer di memori
 
-        // ================== MONSTER HEALTH ==================
-        if (g_ESPCfg.ESPMHealth && e.hpMax > 0) {
-            float healthPercent = (float)e.hp / (float)e.hpMax;
-            ImU32 healthColor = IM_COL32(50, 255, 50, 255);
-            if (healthPercent <= 0.3f) healthColor = IM_COL32(255, 50, 50, 255);
-            else if (healthPercent <= 0.5f) healthColor = IM_COL32(255, 200, 50, 255);
-            
-            float healthBarWidth  = boxWidth > 10.0f ? boxWidth : 50.0f;
-            float healthBarHeight = 6.0f;
-            float healthBarX = rootPosVec2.x - (healthBarWidth / 2);
-            
-            ImVec2 bgStart    = {healthBarX, baseY};
-            ImVec2 bgEnd      = {healthBarX + healthBarWidth, baseY + healthBarHeight};
-            ImVec2 healthEnd  = {healthBarX + (healthBarWidth * healthPercent), baseY + healthBarHeight};
-            
-            draw->AddRectFilled(bgStart, bgEnd, IM_COL32(0, 0, 0, 200), 2);
-            draw->AddRectFilled(bgStart, healthEnd, healthColor, 2);
-            draw->AddRect(bgStart, bgEnd, IM_COL32(255, 255, 255, 120), 2, 0, 1.0f);
-            
-            // HP text
-            std::string hpText = std::to_string(e.hp) + "/" + std::to_string(e.hpMax);
-            float hpFontSize = 11.0f;
-            auto hpSz = ImGui::CalcTextSize(hpText.c_str());
-            float hpTw = (hpSz.x * hpFontSize) / ImGui::GetFontSize();
-            ImVec2 hpPos = {rootPosVec2.x - hpTw/2, baseY + 1.0f};
-            draw->AddText(NULL, hpFontSize, ImVec2(hpPos.x+1, hpPos.y+1), IM_COL32(0,0,0,255), hpText.c_str());
-            draw->AddText(NULL, hpFontSize, hpPos, IM_COL32(255, 255, 255, 255), hpText.c_str());
+    // Identity
+    uint32_t  guid      = 0;    // m_uGuid
+    int32_t   entityId  = 0;    // m_ID
+    int32_t   level     = 0;    // _level
+    std::string name;           // m_HeroName (ShowPlayer only)
+    EntityType  type    = EntityType::Unknown;
+
+    // Camp
+    int32_t   camp      = 0;    // m_EntityCampType (1=Blue, 2=Red)
+    bool      isSelf    = false;
+    bool      isPlayer  = false;
+    bool      isMonster = false;
+    bool      isTower   = false;
+    bool      isSoldier = false;
+    bool      isBoss    = false;
+    bool      isDead    = false;
+    bool      inScreen  = false;
+
+    // Stats
+    int32_t   hp        = 0;
+    int32_t   hpMax     = 1;
+    int32_t   hpPer     = 0;
+    int32_t   mp        = 0;
+    int32_t   mpMax     = 1;
+    int32_t   energy    = 0;
+    int32_t   energyMax = 1;
+    float     atkRange  = 0.f;
+    float     moveSpeed = 0.f;
+
+    // Position (world)
+    Vec3 pos;
+    Vec3 smoothPos;  // Posisi yang di-smooth untuk menghilangkan jitter ESP
+
+    // Position (screen) - filled by WorldToScreen
+    Vec2 screenPos;
+    bool onScreen = false;
+
+    // Cooldowns
+    int skill_cd[4] = {0};
+    int skill_max_cd[4] = {1};
+    int spell_cd = 0;
+    int spell_max_cd = 1;
+    int n_skills = 0;
+
+    // Retri upgrade stats
+    int killNum = 0;
+    int assistNum = 0;
+    int killWild = 0;
+
+    // HP percent helper
+    float HpPct() const {
+        if (hpMax <= 0) return 0.f;
+        return (float)hp / (float)hpMax;
+    }
+    float MpPct() const {
+        if (mpMax <= 0) return 0.f;
+        return (float)mp / (float)mpMax;
+    }
+};
+
+// ============================================================
+//  CODE BREAKER MONSTER FILTER
+// ============================================================
+inline std::string MonsterToString(int m_id) {
+    std::string strMonster;
+    switch(m_id) {
+    case 2002: strMonster = "Lord"; break;
+    case 2003: strMonster = "Turtle"; break;
+    case 2004: strMonster = "Fiend"; break;
+    case 2005: strMonster = "Serpent"; break;
+    case 2006: strMonster = "Scaled Lizard"; break;
+    case 2008: strMonster = "Crammer 1"; break;
+    case 2009: strMonster = "Rockursa"; break;
+    case 2011: strMonster = "Crab"; break;
+    case 2012: strMonster = "Serpent kids"; break;
+    case 2013: strMonster = "Crab"; break;
+    case 2056: strMonster = "Lithowanderer 1"; break;
+    case 2059: strMonster = "Crammer 2"; break;
+    case 2072: strMonster = "Lithowanderer 2"; break;
+    case 2220: strMonster = "Elemental Lord"; break;
+    case 2221: strMonster = "Dragon Turtle"; break;
+    case 2222: strMonster = "Molten Fiend"; break;
+    case 2223: strMonster = "Thunder Fenrir"; break;
+    case 2224: strMonster = "Horned Lizard"; break;
+    case 2225: strMonster = "Fire Beetle"; break;
+    case 2226: strMonster = "Lava Golem"; break;
+    case 2227: strMonster = "Scavenger Crab"; break;
+    case 2228: strMonster = "Little Thunder Fenrir"; break;
+    case 2230: strMonster = "Lithowanderer"; break;
+    default: return ""; // Jika tidak terdaftar, abaikan
+    }
+    return strMonster;
+}
+
+// ============================================================
+//  ENTITY READER
+//  Membaca data dari pointer ShowEntity/ShowPlayer
+// ============================================================
+namespace EntityReader {
+
+inline void ReadBase(EntityData& e) {
+    using namespace InternalMemory;
+    uintptr_t p = e.ptr;
+    if (!p) return;
+
+    // Flags
+    e.isPlayer  = ReadBool(p + OFF_SHOW_IS_PLAYER);
+    e.isSoldier = ReadBool(p + OFF_SHOW_IS_SOLDIER);
+    e.isTower   = ReadBool(p + OFF_SHOW_IS_TOWER);
+    e.isMonster = ReadBool(p + OFF_SHOW_IS_MONSTER);
+    e.isBoss    = ReadBool(p + OFF_SHOW_IS_BOSS);
+    e.isDead    = ReadBool(p + OFF_SHOW_IS_DEATH);
+    e.inScreen  = ReadBool(p + OFF_SHOW_IN_SCREEN);
+    e.camp      = ReadInt32(p + OFF_SHOW_CAMP);
+
+    // Stats (EntityBase fields via ShowEntity)
+    e.guid   = Read<uint32_t>(p + OFF_SE_GUID);
+    e.entityId  = ReadInt32(p + OFF_SE_ID);
+    e.level  = ReadInt32(p + OFF_SE_LEVEL);
+    e.hp     = ReadInt32(p + OFF_SE_HP);
+    e.hpMax  = ReadInt32(p + OFF_SE_HP_MAX);
+    e.hpPer  = ReadInt32(p + OFF_SE_HP_PER);
+    e.mp     = ReadInt32(p + OFF_SE_MP);
+    e.mpMax  = ReadInt32(p + OFF_SE_MP_MAX);
+
+    // Position — 3 metode, prioritas dari paling akurat:
+    bool posFound = false;
+
+    // ── Metode 1: ShowEntity.get_position() (Unity Transform, PALING AKURAT, real-time) ──
+    {
+        // Cache pointer method sekali — lazy init, aman karena dipanggil dari satu thread scanner
+        static void* s_get_pos_fn = nullptr;
+        if (!s_get_pos_fn) s_get_pos_fn = Get_ShowEntity_get_position();
+        
+        if (s_get_pos_fn) {
+            auto fn = reinterpret_cast<UnityVector3(*)(void*)>(s_get_pos_fn);
+            UnityVector3 v = fn(reinterpret_cast<void*>(p));
+            // Abaikan jika nilai tampak nol/garbage (entity belum diinit)
+            if (v.x != 0.0f || v.z != 0.0f) {
+                e.pos.x = v.x;
+                e.pos.y = v.y;
+                e.pos.z = v.z;
+                posFound = true;
+            }
         }
+    }
+
+    // ── Metode 2: LogicFighter VInt3 (akurat untuk hero, bergerak dinamis) ──
+    if (!posFound) {
+        size_t offLogicFighter = Get_SE_LogicFighter_Offset();
+        if (offLogicFighter != 0) {
+            uintptr_t pLogicFighter = ReadPtr(p + offLogicFighter);
+            if (pLogicFighter) {
+                size_t offPos = Get_LogicEntity_Position_Offset();
+                if (offPos != 0) {
+                    int vx = ReadInt32(pLogicFighter + offPos);
+                    int vy = ReadInt32(pLogicFighter + offPos + 4);
+                    int vz = ReadInt32(pLogicFighter + offPos + 8);
+                    // VInt3 scaled by 1000 in MLBB (not 10000 — coba dua skala)
+                    float scale = 1000.0f;
+                    e.pos.x = (float)vx / scale;
+                    e.pos.y = (float)vy / scale;
+                    e.pos.z = (float)vz / scale;
+                    if (vx != 0 || vz != 0) posFound = true;
+                }
+            }
+        }
+    }
+
+    // ── Metode 3: Field posisi langsung (fallback, bisa stale) ──
+    if (!posFound) {
+        e.pos.x = ReadFloat(p + OFF_POS_X);
+        e.pos.y = ReadFloat(p + OFF_POS_Y);
+        e.pos.z = ReadFloat(p + OFF_POS_Z);
+    }
+
+    // Type
+    if (e.isBoss)    e.type = EntityType::Boss;
+    else if (e.isPlayer)  e.type = EntityType::Hero;
+    else if (e.isMonster) e.type = EntityType::Monster;
+    else if (e.isTower)   e.type = EntityType::Tower;
+    else if (e.isSoldier) e.type = EntityType::Soldier;
+}
+
+inline void ReadPlayerExtra(EntityData& e) {
+    using namespace InternalMemory;
+    uintptr_t p = e.ptr;
+    if (!p || !e.isPlayer) return;
+
+    // Hero name (IL2CPP String*)
+    uintptr_t namePtr = ReadPtr(p + OFF_PLAYER_HERO_NAME);
+    e.name = ReadIL2CppString(namePtr);
+
+    // Fallback name jika kosong
+    if (e.name.empty()) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "Hero_%u", e.guid);
+        e.name = buf;
     }
 }
 
-inline void DrawPlayerESP(ImDrawList* draw, void* camera, float screenW, float screenH, bool hasSelf, const ImVec2& selfPosVec2) {
-    float CurrentFOVScale = 1.0f; 
-
-    for (auto& e : g_Battle.heroes_render) {
-        if (e.isSelf || e.isDead || e.hp <= 0) continue;
-        if (e.camp == g_Battle.localCamp) continue; // Only Enemy
-
-        DrawMinimapIcon(draw, e.entityId, e.hp, e.hpMax, e.pos, g_Battle.localCamp);
-
-    // --- POSITION SMOOTHING via static map (persistent across SwapBuffers) ---
-    // Key: entity GUID, Value: smoothed world position
-    static std::unordered_map<uint32_t, Vec3> s_SmoothPos;
-    
-    uint32_t eid = e.guid ? e.guid : (uint32_t)e.entityId;
-    auto it = s_SmoothPos.find(eid);
-    
-    Vec3 renderPos;
-    if (it == s_SmoothPos.end()) {
-        // Entity baru: snap langsung
-        renderPos = e.pos;
-        s_SmoothPos[eid] = e.pos;
-    } else {
-        Vec3& sp = it->second;
-        float dx = e.pos.x - sp.x, dy = e.pos.y - sp.y, dz = e.pos.z - sp.z;
-        float d2 = dx*dx + dy*dy + dz*dz;
-        if (d2 > 225.0f) { // >15 unit = teleport/respawn, snap
-            sp = e.pos;
-        } else {
-            const float ALPHA = 0.35f;
-            sp.x += dx * ALPHA;
-            sp.y += dy * ALPHA;
-            sp.z += dz * ALPHA;
-        }
-        renderPos = sp;
+inline void ReadMonsterName(EntityData& e) {
+    if (e.isBoss) {
+        e.name = "Lord";
+        return;
     }
 
-        Vec2 rootPosW2S;
-        if (!UnityWorldToScreen(camera, renderPos, rootPosW2S, screenW, screenH))
-            continue;
+    switch (e.entityId) {
+        case 2002: e.name = "Lord"; break;
+        case 2003: e.name = "Turtle"; break;
+        case 2004: e.name = "Fiend"; break;        // Red Buff
+        case 2005: e.name = "Serpent"; break;      // Blue Buff
+        case 2006: e.name = "Scaled Lizard"; break;
+        case 2008: e.name = "Crammer 1"; break;
+        case 2009: e.name = "Rockursa"; break;
+        case 2011: e.name = "Crab"; break;
+        case 2012: e.name = "Serpent Kids"; break;
+        case 2013: e.name = "Crab"; break;
+        case 2056: e.name = "Lithowanderer 1"; break;
+        case 2059: e.name = "Crammer 2"; break;
+        case 2072: e.name = "Lithowanderer 2"; break;
+        case 2220: e.name = "Elemental Lord"; break;
+        case 2221: e.name = "Dragon Turtle"; break;
+        case 2222: e.name = "Molten Fiend"; break;
+        case 2223: e.name = "Thunder Fenrir"; break;
+        case 2224: e.name = "Horned Lizard"; break;
+        case 2225: e.name = "Fire Beetle"; break;
+        case 2226: e.name = "Lava Golem"; break;
+        case 2227: e.name = "Scavenger Crab"; break;
+        case 2228: e.name = "Little Thunder Fenrir"; break;
+        case 2230: e.name = "Lithowanderer"; break;
+        case 2232: e.name = "Little Fire Beetle"; break;
+        default:
+            if (e.isTower) e.name = "Tower";
+            else if (e.isSoldier) e.name = "Minion";
+            else e.name = ""; // Empty string for unrecognized monsters (skips drawing in esp)
+            break;
+    }
+}
 
-        ImVec2 rootPosVec2(rootPosW2S.x, rootPosW2S.y);
+} // namespace EntityReader
 
-        // --- 3D PERSPECTIVE HEIGHT ---
-        Vec3 headPos3D = renderPos;
-        headPos3D.y += 1.4f;
+// ============================================================
+//  BATTLE STATE
+//  Menyimpan semua entity yang dibaca dari BattleManager
+// ============================================================
+struct BattleState {
+    uintptr_t battleMgrPtr = 0;
+    uintptr_t localPlayerPtr = 0;
+    int32_t   localCamp = 0;
 
-        Vec2 headPosW2S;
-        ImVec2 HeadPosVec2;
+    std::vector<EntityData> heroes;    // Buffer for read thread
+    std::vector<EntityData> monsters;  // Buffer for read thread
 
-        if (UnityWorldToScreen(camera, headPos3D, headPosW2S, screenW, screenH)) {
-            HeadPosVec2 = ImVec2(headPosW2S.x, headPosW2S.y);
-        } else {
-            float dynamicOffset = GetDynamicOffset(screenH, CurrentFOVScale);
-            HeadPosVec2 = ImVec2(rootPosVec2.x, rootPosVec2.y - dynamicOffset);
+    std::vector<EntityData> heroes_render;    // Buffer for render thread
+    std::vector<EntityData> monsters_render;  // Buffer for render thread
+
+    bool isValid = false;
+    uint64_t curFrame = 0;
+    
+    // Debug Info
+    uintptr_t dbg_bmInst = 0;
+    uintptr_t dbg_logicBmInst = 0;
+    int dbg_battleState = -1;
+    size_t dbg_dicPlayerOff = 0;
+    uintptr_t dbg_dicPlayerPtr = 0;
+    int dbg_dicPlayerCount = 0;
+    uintptr_t dbg_entriesPtr = 0;
+    uintptr_t dbg_firstEntityPtr = 0;
+    int dbg_entriesMaxLen = 0;
+    size_t dbg_offLogicFighter = 0;
+    size_t dbg_offLogicPos = 0;
+    size_t dbg_offCachePos = 0;
+    size_t dbg_offPos = 0;
+    bool dbg_isLogicEntityFound = false;
+    
+    std::mutex m_mutex;
+
+    // Fast copy for rendering to avoid locking during DrawList
+    void SwapBuffers() {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        heroes_render = heroes;
+        monsters_render = monsters;
+    }
+
+    // Offset Cache
+    size_t Get_dicPlayerShow_Offset() {
+        static size_t off = 0;
+        if (off == 0) off = Il2CppGetFieldOffset("Assembly-CSharp.dll", "", "BattleManager", "m_dicPlayerShow");
+        return off;
+    }
+    
+    size_t Get_dicMonsterShow_Offset() {
+        static size_t off = 0;
+        if (off == 0) off = Il2CppGetFieldOffset("Assembly-CSharp.dll", "", "BattleManager", "m_dicMonsterShow");
+        return off;
+    }
+    
+    size_t Get_LocalPlayerShow_Offset() {
+        static size_t off = 0;
+        if (off == 0) off = Il2CppGetFieldOffset("Assembly-CSharp.dll", "", "BattleManager", "m_LocalPlayerShow");
+        return off;
+    }
+    
+    size_t Get_ShowMonsters_Offset() {
+        static size_t off = 0;
+        if (off == 0) off = Il2CppGetFieldOffset("Assembly-CSharp.dll", "", "BattleManager", "m_ShowMonsters");
+        return off;
+    }
+
+    // Refresh dari memori
+    void Update(uintptr_t bmPtr, uintptr_t logicBmPtr) {
+        using namespace InternalMemory;
+        if (!bmPtr) return;
+
+        std::vector<EntityData> tempHeroes;
+        std::vector<EntityData> tempMonsters;
+        
+        uint64_t t_curFrame = Read<uint64_t>(bmPtr + OFF_BM_CUR_FRAME);
+        uintptr_t t_localPlayerPtr = ReadPtr(bmPtr + Get_LocalPlayerShow_Offset());
+        int32_t t_localCamp = 0;
+        
+        if (t_localPlayerPtr) {
+            t_localCamp = ReadInt32(t_localPlayerPtr + OFF_SHOW_CAMP);
         }
         
-        // baseY dihitung SETELAH box projection → selalu anchor ke bawah box
-        float boxHeightForBase = fabs(HeadPosVec2.y - rootPosVec2.y) * 1.15f;
-        float baseY = HeadPosVec2.y + boxHeightForBase + 2.0f; // tepat di bawah box
+        dbg_offLogicFighter = Get_SE_LogicFighter_Offset();
+        dbg_offLogicPos = Get_LogicEntity_Position_Offset();
+        dbg_offCachePos = Il2CppGetFieldOffset("Assembly-CSharp.dll", "", "ShowEntity", "m_vCachePosition");
+        dbg_offPos = Il2CppGetFieldOffset("Assembly-CSharp.dll", "", "ShowEntity", "_Position");
+        dbg_isLogicEntityFound = (Il2CppGetClassType("Assembly-CSharp.dll", "Battle", "LogicEntity") != nullptr);
 
-
-        // ================== LINE ==================
-        if (g_ESPCfg.ESPLine && hasSelf) {
-            ImVec2 startPoint = ImVec2(rootPosVec2.x, rootPosVec2.y + 10 / CurrentFOVScale);
-            ImVec2 endPoint = selfPosVec2;
+        // ============================================================
+        // Read Players via m_dicPlayerShow - PERSIS CODE BREAKER
+        // Menggunakan direct pointer casting (bukan manual offset)
+        // ============================================================
+        size_t offset_dicPlayer = Get_dicPlayerShow_Offset();
+        auto* m_dicPlayerShow = *(Il2CppDictionary<int, uintptr_t>**)(bmPtr + offset_dicPlayer);
+        uintptr_t dicPlayersPtr = (uintptr_t)m_dicPlayerShow;
+        int parsedPlayersCount = 0;
+        uintptr_t dbg_entries_local = 0;
+        uintptr_t dbg_firstEntity_local = 0;
+        int dbg_entriesMaxLen_local = 0;
+        
+        if (m_dicPlayerShow) {
+            parsedPlayersCount = m_dicPlayerShow->count;
             
-            int segmentCount = 20;
-            for (int i = 0; i < segmentCount; i++) {
-                float t1 = (float)i / segmentCount;
-                float t2 = (float)(i + 1) / segmentCount;
+            // PERSIS Code Breaker: iterate entries->vector[i].value
+            if (m_dicPlayerShow->entries) {
+                dbg_entries_local = (uintptr_t)m_dicPlayerShow->entries;
+                dbg_entriesMaxLen_local = m_dicPlayerShow->entries->max_length;
                 
-                ImVec2 p1 = ImVec2(startPoint.x + (endPoint.x - startPoint.x) * t1, startPoint.y + (endPoint.y - startPoint.y) * t1);
-                ImVec2 p2 = ImVec2(startPoint.x + (endPoint.x - startPoint.x) * t2, startPoint.y + (endPoint.y - startPoint.y) * t2);
+                int numEntries = m_dicPlayerShow->entries->max_length;
+                if (numEntries > 50) numEntries = 50;
                 
-                int alpha1 = 220 - (int)(t1 * 220);
-                int alpha2 = 220 - (int)(t2 * 220);
-                alpha1 = (alpha1 < 0) ? 0 : alpha1;
-                alpha2 = (alpha2 < 0) ? 0 : alpha2;
-                draw->AddLine(p1, p2, IM_COL32(255, 255, 255, alpha2), 1.5f);
-            }
-        }
-
-        // ================== BOX ==================
-        if (g_ESPCfg.ESPBox) {
-            float boxHeight = fabs(HeadPosVec2.y - rootPosVec2.y) * 1.15f;
-            float boxWidth = boxHeight * 0.8f;
-            
-            ImVec2 vStart = {HeadPosVec2.x - (boxWidth / 2), HeadPosVec2.y};
-            ImVec2 vEnd = {vStart.x + boxWidth, vStart.y + boxHeight};
-            
-            draw->AddRectFilled(vStart, vEnd, IM_COL32(0, 0, 0, 50), g_ESPCfg.RoundBox / 2);
-            draw->AddRectFilled(vStart, vEnd, IM_COL32(100, 200, 255, 30), g_ESPCfg.RoundBox / 2);
-            draw->AddRect(vStart, vEnd, IM_COL32(100, 200, 255, 255), g_ESPCfg.RoundBox, 0, 3.0f);
-        }
-
-        // ================== ROUND ==================
-        if (g_ESPCfg.ESPRound) {
-            float circleRadius = 10.0f / CurrentFOVScale;
-            draw->AddCircleFilled(ImVec2(rootPosVec2.x, rootPosVec2.y + 10 / CurrentFOVScale), circleRadius, IM_COL32(100, 200, 255, 255));
-            draw->AddCircle(ImVec2(rootPosVec2.x, rootPosVec2.y + 10 / CurrentFOVScale), circleRadius, IM_COL32(255, 255, 255, 200), 0, 2.0f);
-        }
-
-        // ================== HEALTH BAR ==================
-        if (g_ESPCfg.ESPHealth) {
-            float healthBarWidth = 70.0f / CurrentFOVScale;
-            float healthBarHeight = 12.0f / CurrentFOVScale;
-            
-            float healthBarX = rootPosVec2.x - (healthBarWidth / 2);
-            ImVec2 bgStart = {healthBarX, baseY};
-            ImVec2 bgEnd = {healthBarX + healthBarWidth, baseY + healthBarHeight};
-            
-            float healthPercent = (float)e.hp / (float)e.hpMax;
-            ImVec2 healthEnd = {healthBarX + (healthBarWidth * healthPercent), baseY + healthBarHeight};
-            
-            ImU32 healthColor = GetHealthColor(e.hp, e.hpMax);
-            
-            draw->AddRectFilled(bgStart, bgEnd, IM_COL32(0, 0, 0, 200), 8);
-            draw->AddRectFilled(bgStart, healthEnd, healthColor, 8);
-            draw->AddRect(bgStart, bgEnd, IM_COL32(255, 255, 255, 230), 8, 0, 2.0f);
-            
-            std::string hpText = std::to_string(e.hp) + " / " + std::to_string(e.hpMax);
-            float hpFontSize = 11.0f / CurrentFOVScale;
-            
-            auto hpTextSize = ImGui::CalcTextSize(hpText.c_str());
-            float scaledHpTextWidth = (hpTextSize.x * hpFontSize) / ImGui::GetFontSize();
-            ImVec2 hpTextPos = {rootPosVec2.x - (scaledHpTextWidth / 2), baseY + (2.0f / CurrentFOVScale)};
-            
-            draw->AddText(NULL, hpFontSize, ImVec2(hpTextPos.x + 1, hpTextPos.y + 1), IM_COL32(0, 0, 0, 255), hpText.c_str());
-            draw->AddText(NULL, hpFontSize, hpTextPos, IM_COL32(255, 255, 255, 255), hpText.c_str());
-            
-            baseY += healthBarHeight + (5.0f / CurrentFOVScale);
-        }
-
-        // ================== NAME ==================
-        if (g_ESPCfg.ESPName) {
-            std::string heroName = e.name;
-            float baseNameFontSize = screenH / 30.0f;
-            float nameFontSize = baseNameFontSize / CurrentFOVScale;
-            
-            auto textSize = ImGui::CalcTextSize(heroName.c_str());
-            float scaledTextWidth = (textSize.x * nameFontSize) / ImGui::GetFontSize();
-            ImVec2 textPos = {rootPosVec2.x - (scaledTextWidth / 2), baseY};
-            
-            draw->AddText(NULL, nameFontSize, ImVec2(textPos.x + 2.0f, textPos.y + 2.0f), IM_COL32(0, 0, 0, 250), heroName.c_str());
-            draw->AddText(NULL, nameFontSize, textPos, IM_COL32(220, 180, 255, 255), heroName.c_str());
-            baseY += (textSize.y * nameFontSize / ImGui::GetFontSize()) + 5.0f;
-        }
-
-        // ================== HERO ICON (OVERLAY) ==================
-        if (g_ESPCfg.ESPHero) {
-            void* tex = GetHeroIcon(e.entityId);  // MTLTexture* via __bridge
-            if (tex != nullptr) {
-                float iconSize = 24.0f; // Ukuran tetap, tidak scale dengan FOV
-                float halfSize = iconSize / 2.0f;
-                ImVec2 iconMin = ImVec2(rootPosVec2.x - halfSize, baseY);
-                ImVec2 iconMax = ImVec2(rootPosVec2.x + halfSize, baseY + iconSize);
-                
-                draw->AddImageRounded(tex, iconMin, iconMax, ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255, 255, 255, 230), 4.0f);
-                draw->AddRect(iconMin, iconMax, IM_COL32(255, 255, 255, 150), 4.0f, 0, 1.0f);
-                
-                baseY += iconSize + 4.0f;
-            }
-        }
-
-        // ================== COOLDOWNS ==================
-        if (g_ESPCfg.ESPSkillCD || g_ESPCfg.ESPSpellCD) {
-            float baseCdBoxSize = 22.0f;
-            float baseCdSpacing = 26.0f;
-            
-            float cdBoxSize = baseCdBoxSize / CurrentFOVScale;
-            float cdSpacing = baseCdSpacing / CurrentFOVScale;
-            
-            int numSkillsToDraw = e.n_skills > 0 ? e.n_skills : 3;
-            if (numSkillsToDraw > 4) numSkillsToDraw = 4;
-            
-            int totalSkills = (g_ESPCfg.ESPSkillCD ? numSkillsToDraw : 0) + (g_ESPCfg.ESPSpellCD ? 1 : 0);
-            float totalWidth = (totalSkills - 1) * cdSpacing;
-            float startX = rootPosVec2.x - (totalWidth / 2);
-            
-            int skillIndex = 0;
-            baseY += (30.0f / CurrentFOVScale);
-            
-            auto DrawCooldownBox = [&](ImVec2 basePos, int type, int cd_ms) {
-                float boxSize = baseCdBoxSize / CurrentFOVScale;
-                float fontSize = (baseCdBoxSize * 0.75f) / CurrentFOVScale;
-                
-                ImVec2 boxStart = ImVec2(basePos.x - boxSize/2, basePos.y - boxSize/2);
-                ImVec2 boxEnd = ImVec2(basePos.x + boxSize/2, basePos.y + boxSize/2);
-                
-                int cooldown = (cd_ms > 0) ? ((cd_ms + 999) / 1000) : 0;
-                
-                ImU32 color;
-                if (type == 0) {
-                    color = IM_COL32(100, 200, 255, 255);
-                } else if (type == 4) {
-                    color = IM_COL32(255, 120, 120, 255);
-                } else {
-                    color = IM_COL32(255, 220, 100, 255);
+                for (int i = 0; i < numEntries; i++) {
+                    auto& entry = m_dicPlayerShow->entries->vector[i];
+                    if (entry.hashCode < 0) continue; // Empty slot
+                    
+                    uintptr_t entityPtr = entry.value;
+                    if (i == 0) dbg_firstEntity_local = entityPtr;
+                    if (!entityPtr || entityPtr < 0x100000000ULL) continue;
+                    
+                    EntityData e;
+                    e.ptr = entityPtr;
+                    EntityReader::ReadBase(e);
+                    e.isPlayer = true;
+                    e.type = EntityType::Hero;
+                    EntityReader::ReadPlayerExtra(e);
+                    e.isSelf = (entityPtr == t_localPlayerPtr);
+                    tempHeroes.push_back(e);
                 }
+            }
+        }
+
+        // ============================================================
+        // Read Monsters via m_ShowMonsters (List) - PERSIS CODE BREAKER
+        // ============================================================
+        size_t offset_showMonsters = Get_ShowMonsters_Offset();
+        auto* m_ShowMonsters = *(Il2CppList<uintptr_t>**)(bmPtr + offset_showMonsters);
+        if (m_ShowMonsters && m_ShowMonsters->items) {
+            int size = m_ShowMonsters->size;
+            if (size > 0 && size <= 500) {
+                for (int i = 0; i < size; i++) {
+                    uintptr_t entityPtr = m_ShowMonsters->items->vector[i];
+                    if (!entityPtr) continue;
+                    
+                    int entityId = ReadInt32(entityPtr + OFF_SE_ID);
+                    if (MonsterToString(entityId) == "") continue; // FILTER!
+                    
+                    EntityData e;
+                    e.ptr = entityPtr;
+                    EntityReader::ReadBase(e);
+                    e.isMonster = true;
+                    if (e.isBoss) e.type = EntityType::Boss;
+                    else e.type = EntityType::Monster;
+                    e.name = MonsterToString(e.entityId);
+                    tempMonsters.push_back(e);
+                }
+            }
+        }
+
+        // ---- Read Monsters (Dictionary supplement) ----
+        size_t offset_dicMonster = Get_dicMonsterShow_Offset();
+        auto* m_dicMonsterShow = *(Il2CppDictionary<int, uintptr_t>**)(bmPtr + offset_dicMonster);
+        if (m_dicMonsterShow && m_dicMonsterShow->entries) {
+            int numEntries = m_dicMonsterShow->entries->max_length;
+            if (numEntries > 500) numEntries = 500;
+            for (int i = 0; i < numEntries; i++) {
+                auto& entry = m_dicMonsterShow->entries->vector[i];
+                if (entry.hashCode < 0) continue;
+                uintptr_t entityPtr = entry.value;
+                if (!entityPtr || entityPtr < 0x100000000ULL) continue;
                 
-                if (cooldown > 0) {
-                    draw->AddRectFilled(boxStart, boxEnd, IM_COL32(0, 0, 0, 200), boxSize * 0.15f);
-                    draw->AddRect(boxStart, boxEnd, IM_COL32(255, 255, 255, 100), boxSize * 0.15f, 0, 2.0f);
-                    
-                    std::string strCoolDown = std::to_string(cooldown);
-                    auto textSize = ImGui::CalcTextSize(strCoolDown.c_str());
-                    ImVec2 textPos = ImVec2(basePos.x - (textSize.x * fontSize / ImGui::GetFontSize()) / 2, 
-                                            basePos.y - (textSize.y * fontSize / ImGui::GetFontSize()) / 2);
-                    
-                    draw->AddText(NULL, fontSize, ImVec2(textPos.x + 1.0f, textPos.y + 1.0f), 
-                                 IM_COL32(0, 0, 0, 255), strCoolDown.c_str());
-                    draw->AddText(NULL, fontSize, textPos, color, strCoolDown.c_str());
-                } else {
-                    draw->AddRectFilled(boxStart, boxEnd, IM_COL32(color >> 16 & 0xFF, color >> 8 & 0xFF, color & 0xFF, 100), boxSize * 0.15f);
-                    draw->AddRect(boxStart, boxEnd, color, boxSize * 0.15f, 0, 2.5f);
-                    draw->AddCircleFilled(basePos, boxSize * 0.2f, color);
+                int entityId = ReadInt32(entityPtr + OFF_SE_ID);
+                if (MonsterToString(entityId) == "") continue; // FILTER!
+                
+                // Dedup
+                bool dup = false;
+                for (auto& m : tempMonsters) {
+                    if (m.ptr == entityPtr) { dup = true; break; }
+                }
+                if (!dup) {
+                    EntityData e;
+                    e.ptr = entityPtr;
+                    EntityReader::ReadBase(e);
+                    e.isMonster = true;
+                    if (e.isBoss) e.type = EntityType::Boss;
+                    else e.type = EntityType::Monster;
+                    e.name = MonsterToString(e.entityId);
+                    tempMonsters.push_back(e);
+                }
+            }
+        }
+
+        // ============================================================
+        //  COOLDOWN PARSING (Logic Layer)
+        // ============================================================
+        if (logicBmPtr && logicBmPtr > 0x7000000000ULL) {
+            uintptr_t logicEnts[50];
+            int logicCount = 0;
+            
+            uintptr_t campA = ReadPtr(logicBmPtr + OFF_BM_CAMPA_PLAYERS);
+            uintptr_t campB = ReadPtr(logicBmPtr + OFF_BM_CAMPB_PLAYERS);
+            
+            auto ReadLogicList = [&](uintptr_t listPtr) {
+                if (!listPtr || listPtr < 0x7000000000ULL) return;
+                int32_t size = ReadInt32(listPtr + OFF_LIST_SIZE);
+                uintptr_t itemsArr = ReadPtr(listPtr + OFF_LIST_ITEMS);
+                if (size > 0 && size <= 20 && itemsArr) {
+                    for (int i=0; i<size; i++) {
+                        uintptr_t lPtr = ReadPtr(itemsArr + OFF_ARRAY_FIRST_ITEM + i * 8);
+                        if (lPtr > 0x7000000000ULL && logicCount < 50) {
+                            logicEnts[logicCount++] = lPtr;
+                        }
+                    }
                 }
             };
+            ReadLogicList(campA);
+            ReadLogicList(campB);
             
-            if (g_ESPCfg.ESPSkillCD) {
-                for (int i = 0; i < numSkillsToDraw; i++) {
-                    DrawCooldownBox(ImVec2(startX + (skillIndex * cdSpacing), baseY), 1, e.skill_cd[i]);
-                    skillIndex++;
+            // Match LogicFighter to ShowPlayer
+            for (auto& h : tempHeroes) {
+                uintptr_t matchedLogic = 0;
+                for (int i=0; i<logicCount; i++) {
+                    int32_t l_id = ReadInt32(logicEnts[i] + OFF_ENTITY_ID);
+                    if (l_id == h.entityId) {
+                        matchedLogic = logicEnts[i];
+                        break;
+                    }
                 }
-            }
-            if (g_ESPCfg.ESPSpellCD) {
-                DrawCooldownBox(ImVec2(startX + (skillIndex * cdSpacing), baseY), 0, e.spell_cd);
+                
+                if (matchedLogic) {
+                    // Extract kill stats for self (needed for Retri upgrade calculation)
+                    if (h.isSelf) {
+                        h.killWild = ReadInt32(matchedLogic + OFF_PLAYER_KILL_WILD);
+                        uintptr_t playerData = ReadPtr(matchedLogic + OFF_PLAYER_DATA);
+                        if (playerData > 0x7000000000ULL) {
+                            h.killNum = ReadInt32(playerData + OFF_PD_KILL_NUM);
+                            h.assistNum = ReadInt32(playerData + OFF_PD_ASSIST_NUM);
+                        }
+                    }
+
+                    uintptr_t skillComp = ReadPtr(matchedLogic + OFF_LF_SKILLCOMP);
+                    if (skillComp > 0x7000000000ULL) {
+                        uintptr_t cdComp = ReadPtr(skillComp + OFF_SC_COOLDOWNCOMP);
+                        if (cdComp > 0x7000000000ULL) {
+                            uintptr_t dic = ReadPtr(cdComp + OFF_CD_DICCOOLINFO);
+                            if (dic > 0x7000000000ULL) {
+                                uintptr_t entries = ReadPtr(dic + 0x18);
+                                int32_t count = ReadInt32(dic + 0x20);
+                                
+                                struct CdEntry { int id; int remain_ms; int max_ms; };
+                                std::vector<CdEntry> cds;
+                                
+                                if (entries > 0x7000000000ULL && count > 0 && count <= 50) {
+    for (int k=0; k<count && k<30; k++) {
+    uintptr_t entryBase = entries + 0x20 + k * 0x18;
+    int32_t hash = ReadInt32(entryBase + 0x00);
+    if (hash == -1) continue;
+
+    int32_t key = ReadInt32(entryBase + 0x08);
+    if (key <= 0) continue;
+
+    uintptr_t cdData = ReadPtr(entryBase + 0x10);
+    if (cdData > 0x7000000000ULL) {
+        uint32_t cool_time = Read<uint32_t>(cdData + OFF_CDD_COOLTIME);
+        uint32_t start_time = Read<uint32_t>(cdData + OFF_CDD_STARTTIME);
+        uint32_t orig_max = Read<uint32_t>(cdData + OFF_CDD_ORIGMAX);
+        uint32_t game_time = Read<uint32_t>(logicBmPtr + 0x19c);
+
+        int max_ms = orig_max > 0 ? orig_max : cool_time;
+        int remain_ms = 0;
+
+        if (cool_time > 0) {
+            if (start_time > 0) {
+                uint32_t end_time = start_time + cool_time;
+                if (game_time > 0 && game_time < end_time) {
+                    remain_ms = end_time - game_time;
+                } else {
+                    remain_ms = cool_time;
+                }
+            } else {
+                remain_ms = cool_time;
             }
         }
+
+        cds.push_back({key, remain_ms, max_ms});
     }
 }
+}
+                                // Map to Hero Skills
+                                // Hero skills follow: heroId * 100 + slot (e.g. 1600=S1, 1610=S2)
+                                int heroBase = h.entityId * 100;
+                                int validSkillsFound = 0;
+                                uint32_t game_time = Read<uint32_t>(logicBmPtr + 0x19c);
+                                
+                                // Sort or find matching skills
+                                // Slot 1 = heroBase + 10
+                                // Slot 2 = heroBase + 20
+                                // Slot 3 = heroBase + 30
+                                // Slot 4 = heroBase + 40
+                                
+                                // Pass 1: find spell
+                                int bestSpellCd = 0;
+                                int bestSpellMax = 0;
+                                for (auto& c : cds) {
+                                    if (c.id >= 20000 && c.max_ms > 10000) { // Battle Spell
+                                        if (c.max_ms > bestSpellMax) {
+                                            bestSpellCd = c.remain_ms;
+                                            bestSpellMax = c.max_ms;
+                                        }
+                                    }
+                                }
+                                h.spell_cd = bestSpellCd;
+                                h.spell_max_cd = bestSpellMax;
+                                
+                                // Pass 2: hero skills
+                                for (int s_idx=1; s_idx<=4; s_idx++) {
+                                    int targetId = heroBase + (s_idx * 10);
+                                    for (auto& c : cds) {
+                                        if (c.id == targetId && c.max_ms > 2000) {
+                                            h.skill_cd[s_idx-1] = c.remain_ms;
+                                            h.skill_max_cd[s_idx-1] = c.max_ms;
+                                            if (s_idx > validSkillsFound) validSkillsFound = s_idx;
+                                        }
+                                    }
+                                }
+                                h.n_skills = validSkillsFound;
+                                
+                                // Fallback for some heroes where skill ID might not perfectly match * 100 + 10:
+                                // Just grab the top N highest max_ms skills if validSkillsFound == 0
+                                if (h.n_skills == 0) {
+                                    std::vector<CdEntry> h_skills;
+                                    for(auto& c : cds) {
+                                        if (c.id > heroBase && c.id < heroBase + 100 && c.max_ms >= 2000) {
+                                            h_skills.push_back(c);
+                                        }
+                                    }
+                                    // Sort by ID ascending
+                                    for(size_t i=0; i<h_skills.size(); i++) {
+                                        for(size_t j=i+1; j<h_skills.size(); j++) {
+                                            if (h_skills[i].id > h_skills[j].id) {
+                                                auto tmp = h_skills[i]; h_skills[i] = h_skills[j]; h_skills[j] = tmp;
+                                            }
+                                        }
+                                    }
+                                    for(size_t i=0; i<h_skills.size() && i<4; i++) {
+                                        h.skill_cd[i] = h_skills[i].remain_ms;
+                                        h.skill_max_cd[i] = h_skills[i].max_ms;
+                                    }
+                                    h.n_skills = h_skills.size() > 4 ? 4 : h_skills.size();
+                                }
+                            }
+                        }
+                    }
+                }
+                // (Removed debug text logic since parsing is confirmed working)
+            }
+        }
+
+        // Fast swap under lock
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            battleMgrPtr = bmPtr;
+            curFrame = t_curFrame;
+            localPlayerPtr = t_localPlayerPtr;
+            localCamp = t_localCamp;
+            heroes = std::move(tempHeroes);
+            monsters = std::move(tempMonsters);
+            
+            dbg_dicPlayerOff = offset_dicPlayer;
+            dbg_dicPlayerPtr = dicPlayersPtr;
+            dbg_dicPlayerCount = parsedPlayersCount;
+            dbg_entriesPtr = dbg_entries_local;
+            dbg_firstEntityPtr = dbg_firstEntity_local;
+            dbg_entriesMaxLen = dbg_entriesMaxLen_local;
+            
+            isValid = true;
+        }
+    }
+};
+
+// Global battle state
+inline BattleState g_Battle;
