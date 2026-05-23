@@ -554,7 +554,8 @@ struct BattleState {
 
         cds.push_back({key, remain_ms, max_ms});
     }
-}              
+}
+}
                                 // Map to Hero Skills
                                 // Hero skills follow: heroId * 100 + slot (e.g. 1600=S1, 1610=S2)
                                 int heroBase = h.entityId * 100;
