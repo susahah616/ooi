@@ -4,7 +4,7 @@
 #include <string>
 
 inline void SaveConfig() {
-    std::ofstream file("/var/mobile/Documents/mlbb_esp_config.ini");
+    std::ofstream file("mlbb_esp_config.ini");
     if (!file.is_open()) return;
     file << "AutoLoadSettings=" << AutoLoadSettings << "\n";
     file << "ESPLine=" << Feature.ESPLine << "\n";
@@ -46,7 +46,7 @@ inline void SaveConfig() {
 }
 
 inline void LoadConfig() {
-    std::ifstream file("/var/mobile/Documents/mlbb_esp_config.ini");
+    std::ifstream file("mlbb_esp_config.ini");
     if (!file.is_open()) return;
     std::string line;
     while (std::getline(file, line)) {

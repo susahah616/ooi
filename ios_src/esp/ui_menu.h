@@ -120,9 +120,9 @@ inline void ShowMenu()
 
         if (selectedTab == 0) {
             ImGui::BeginGroupPanel(" INFO MOD", ImVec2(ImGui::GetContentRegionAvail().x, 0));
-            ImGui::TextColored(TEXT_PRIMARY, "Author   : Light Souls");
+            ImGui::TextColored(TEXT_PRIMARY, "Author   : gigi");
             ImGui::TextColored(TEXT_PRIMARY, "Version  : 3.0");
-            ImGui::TextColored(TEXT_PRIMARY, "Status   : Test");
+            ImGui::TextColored(TEXT_PRIMARY, "Status   : -");
             ImGui::Spacing();
             if (ImGui::Button("CODE BREAKER GROUP", ImVec2(ImGui::GetContentRegionAvail().x, 48))) {
                 // Telegram
