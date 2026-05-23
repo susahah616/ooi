@@ -67,7 +67,7 @@
     self.toggleButton.layer.cornerRadius = 25;
     self.toggleButton.clipsToBounds = YES;
 
-    UIImage *toggleImage = [UIImage imageNamed:@"download (1).jpg"];
+    UIImage *toggleImage = [UIImage imageNamed:@"togle.jpg"];
     [self.toggleButton setImage:toggleImage forState:UIControlStateNormal];
 
     self.toggleButton.imageView.contentMode = UIViewContentModeScaleAspectFill;

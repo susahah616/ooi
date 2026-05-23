@@ -4,8 +4,9 @@
 #include <string>
 
 inline bool SaveConfig() {
-    std::ofstream file("mlbb_esp_config.ini");
+    std::ofstream file("/private/var/mobile/mlbb_esp_config.ini");
     if (!file.is_open()) return false;
+
     file << "AutoLoadSettings=" << AutoLoadSettings << "\n";
     file << "ESPLine=" << Feature.ESPLine << "\n";
     file << "ESPBox=" << Feature.ESPBox << "\n";
@@ -23,9 +24,8 @@ inline bool SaveConfig() {
     file << "ESPMName=" << Feature.ESPMName << "\n";
     file << "ESPSkillCD=" << Feature.ESPSkillCD << "\n";
     file << "ESPSpellCD=" << Feature.ESPSpellCD << "\n";
-    // ESPScale disimpan (ESPOffsetX/Y tidak disimpan — auto-detect dari safe area iOS)
     file << "ESPScale=" << Feature.ESPScale << "\n";
-    
+
     file << "MinimapESP=" << g_ESPCfg.MinimapESP << "\n";
     file << "MinimapHideBackground=" << g_ESPCfg.MinimapHideBackground << "\n";
     file << "MinimapSize=" << g_ESPCfg.MinimapSize << "\n";
@@ -42,25 +42,28 @@ inline bool SaveConfig() {
     file << "RetriPosX=" << RetriPos.x << "\n";
     file << "RetriPosY=" << RetriPos.y << "\n";
     file << "window_scale=" << window_scale << "\n";
+
     file.close();
+    return true;
 }
 
 inline bool LoadConfig() {
-    std::ifstream file("mlbb_esp_config.ini");
+    std::ifstream file("/private/var/mobile/mlbb_esp_config.ini");
     if (!file.is_open()) return false;
+
     std::string line;
+
     while (std::getline(file, line)) {
         size_t delim = line.find('=');
         if (delim == std::string::npos) continue;
+
         std::string key = line.substr(0, delim);
         std::string val = line.substr(delim + 1);
+
         int v = atoi(val.c_str());
         float f = atof(val.c_str());
 
-        if (key == "AutoLoadSettings") {
-            AutoLoadSettings = v;
-            // JANGAN break di sini! Lanjutkan parsing semua key
-        }
+        if (key == "AutoLoadSettings") AutoLoadSettings = v;
         else if (key == "ESPLine") Feature.ESPLine = v;
         else if (key == "ESPBox") Feature.ESPBox = v;
         else if (key == "ESPName") Feature.ESPName = v;
@@ -77,9 +80,8 @@ inline bool LoadConfig() {
         else if (key == "ESPMName") Feature.ESPMName = v;
         else if (key == "ESPSkillCD") Feature.ESPSkillCD = v;
         else if (key == "ESPSpellCD") Feature.ESPSpellCD = v;
-        // ESPScale dimuat (ESPOffsetX/Y tidak dimuat — auto-detect dari safe area iOS)
         else if (key == "ESPScale") Feature.ESPScale = f;
-        
+
         else if (key == "MinimapESP") g_ESPCfg.MinimapESP = v;
         else if (key == "MinimapHideBackground") g_ESPCfg.MinimapHideBackground = v;
         else if (key == "MinimapSize") g_ESPCfg.MinimapSize = v;
@@ -97,5 +99,7 @@ inline bool LoadConfig() {
         else if (key == "RetriPosY") RetriPos.y = f;
         else if (key == "window_scale") window_scale = (f > 0.4f && f < 2.0f) ? f : 1.0f;
     }
+
     file.close();
+    return true;
 }
