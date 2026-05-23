@@ -187,59 +187,14 @@
         g_Battle.SwapBuffers();
         
         // DEBUG TEXT DI LAYAR
-        char debugStr[768];
-        /*snprintf(debugStr, sizeof(debugStr), 
-                 "DEBUG:\n"
-                 "BattleState: %d\n"
-                 "bmInst: %p\n"
-                 "logicBmInst: %p\n"
-                 "dicPlayerOff: 0x%zx\n"
-                 "dicPlayerPtr: 0x%lx\n"
-                 "entries: 0x%lx (maxLen: %d)\n"
-                 "1stEntity: 0x%lx\n"
-                 "Heroes: %zu / count: %d\n"
-                 "Monsters: %zu\n"
-                 "LocalCamp: %d | Camera: %p", 
-                 g_Battle.dbg_battleState, (void*)g_Battle.dbg_bmInst, (void*)g_Battle.dbg_logicBmInst,
-                 g_Battle.dbg_dicPlayerOff, g_Battle.dbg_dicPlayerPtr,
-                 g_Battle.dbg_entriesPtr, g_Battle.dbg_entriesMaxLen,
-                 g_Battle.dbg_firstEntityPtr,
-                 g_Battle.heroes_render.size(), g_Battle.dbg_dicPlayerCount,
-                 g_Battle.monsters_render.size(),
-                 g_Battle.localCamp, GetCameraMain());
-        char extraStr[256] = "";
-        snprintf(extraStr, sizeof(extraStr), "\nOffLogicF: 0x%zx | OffLogPos: 0x%zx\nOffCacheP: 0x%zx | OffPos: 0x%zx | PosOff: 0x%zx\nLogicEntityFound: %d\nScaleFactor: %.1f | SafeAreaTop: %.0f\nUnityW: %d | UnityH: %d",
-                 g_Battle.dbg_offLogicFighter, g_Battle.dbg_offLogicPos,
-                 g_Battle.dbg_offCachePos, g_Battle.dbg_offPos, Get_SE_POS_Offset(),
-                 g_Battle.dbg_isLogicEntityFound,
-                 g_ContentScaleFactor, g_SafeAreaTop,
-                 GetUnityScreenWidth(), GetUnityScreenHeight());
+        // DEBUG TEXT DISABLED
+char debugStr[1] = "";
+char extraStr[1] = "";
+char enemyStr[1] = "";
         
-        char enemyStr[256] = "";
-        if (!g_Battle.heroes_render.empty()) {
-            for (auto& e : g_Battle.heroes_render) {
-                if (e.camp != g_Battle.localCamp && !e.isSelf) {
-                    // Baca m_vCachePosition langsung dari ptr entity untuk verifikasi
-                    float cx=0,cy=0,cz=0;
-                    if (e.ptr) {
-                        size_t cp = Il2CppGetFieldOffset("Assembly-CSharp.dll","","ShowEntity","m_vCachePosition");
-                        if (cp == 0) cp = 0x294;
-                        cx = *(float*)(e.ptr + cp);
-                        cy = *(float*)(e.ptr + cp + 4);
-                        cz = *(float*)(e.ptr + cp + 8);
-                    }
-                    snprintf(enemyStr, sizeof(enemyStr),
-                             "\nEnemyPos: %.2f, %.2f, %.2f\nCachePos: %.2f, %.2f, %.2f\nGetPosFn: %p",
-                             e.pos.x, e.pos.y, e.pos.z,
-                             cx, cy, cz,
-                             Get_ShowEntity_get_position());*/
-                    break;
-                }
-            }
-        }
-        
-        std::string finalDebugStr = std::string(debugStr) + extraStr + enemyStr;
-        ImGui::GetBackgroundDrawList()->AddText(ImVec2(50, 50), IM_COL32(0, 255, 0, 255), finalDebugStr.c_str());
+        // DEBUG OVERLAY DISABLED
+// std::string finalDebugStr = std::string(debugStr) + extraStr + enemyStr;
+// ImGui::GetBackgroundDrawList()->AddText(ImVec2(50, 50), IM_COL32(0, 255, 0, 255), finalDebugStr.c_str());
         ImDrawList* bgDraw = ImGui::GetBackgroundDrawList();
         
         // --- MINIMAP BORDER (snake glow) — aktif SELALU saat MinimapESP=true, tidak perlu dalam match ---
